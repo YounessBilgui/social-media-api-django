@@ -18,6 +18,7 @@ class UserPublicSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
+    username = serializers.CharField()
 
     class Meta:
         model = User
@@ -27,6 +28,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         return User.objects.create_user(
             username=validated_data["username"], password=validated_data["password"]
         )
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Username already taken.")
+        return value
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -57,13 +63,17 @@ class PostSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(field=serializers.IntegerField())
     def get_likes_count(self, obj) -> int:
-        """Return number of likes (annotated or counted)."""
-        return int(getattr(obj, "likes_count", None) or obj.likes.count())
+        annotated = getattr(obj, "likes_count", None)
+        if annotated is not None:
+            return int(annotated)
+        return obj.likes.count()
 
     @extend_schema_field(field=serializers.IntegerField())
     def get_comments_count(self, obj) -> int:
-        """Return number of comments (annotated or counted)."""
-        return int(getattr(obj, "comments_count", None) or obj.comments.count())
+        annotated = getattr(obj, "comments_count", None)
+        if annotated is not None:
+            return int(annotated)
+        return obj.comments.count()
 
 
 class FollowSerializer(serializers.ModelSerializer):

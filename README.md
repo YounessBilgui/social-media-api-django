@@ -150,3 +150,67 @@ make test
 - Use persistent Postgres volume & proper backup
 
 Enjoy building on top!
+
+## Deployment (Optional Task)
+
+If you deploy publicly, share the base URL like:
+
+Examples:
+- https://your-api-name.onrender.com/api/
+- https://your-api-name.fly.dev/api/
+- https://your-api-name.railway.app/api/
+
+Test in an incognito window: https://your-api-base/api/docs/ should load without auth for read-only browsing.
+
+### Required Environment Variables (recommended)
+```
+DJANGO_SECRET_KEY=<strong-random>
+DEBUG=0
+ALLOWED_HOSTS=your-domain.com,your-alt-domain.onrender.com
+CORS_ALLOW_ALL=0
+CORS_ALLOWED_ORIGINS=https://your-frontend.example
+DB_NAME=<db>
+DB_USER=<user>
+DB_PASSWORD=<password>
+DB_HOST=<host>
+DB_PORT=5432
+```
+
+### Render.com (Quick)
+1. New + Web Service -> GitHub repo
+2. Build Command: `pip install -r requirements.txt`
+3. Start Command: `gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3`
+4. Add env vars above. (Render sets PORT automatically; gunicorn respects bind.)
+5. After deploy: run a one-off shell (Render dashboard) `python manage.py migrate` then (optional) `python manage.py createsuperuser`.
+
+### Railway.app
+1. Create project -> Deploy from repo.
+2. Add a Postgres plugin; copy its credentials into env vars.
+3. Set Start Command as above.
+4. Run migrations via Railway shell.
+
+### Fly.io
+1. `fly launch` (select Python builder, set internal port 8000).
+2. Set secrets: `fly secrets set DJANGO_SECRET_KEY=...` etc.
+3. Create a managed Postgres: `fly postgres create` then attach.
+4. Deploy: `fly deploy`; run migrations with `fly ssh console -C "python manage.py migrate"`.
+
+### Docker Image (Local Production Sim)
+```
+docker build -t social-api .
+docker run -p 8000:8000 --env-file .env social-api
+```
+
+### Static Files
+Collected during image build (`collectstatic`) and served via WhiteNoise.
+
+### Health Check
+You can use `/api/docs/` (HTML) or `/api/schema/` (JSON) as a basic uptime check; for a JSON lightweight endpoint consider adding `/health/` later.
+
+### Verifying Public URL
+1. Open `/api/docs/` with no auth: should load.
+2. Execute `POST /api/auth/register/` (if you allow open registration) or use an existing account with `POST /api/auth/token/`.
+3. `GET /api/posts/` should return JSON 200.
+
+If 400/500 errors appear, check logs (Render / Railway dashboard) for missing env vars or database errors.
+

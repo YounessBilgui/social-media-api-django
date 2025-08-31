@@ -47,7 +47,7 @@ class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def get_queryset(self):
-        qs = (
+        return (
             Post.objects.select_related("author")
             .annotate(
                 likes_count=Count("likes", distinct=True),
@@ -55,7 +55,6 @@ class PostViewSet(viewsets.ModelViewSet):
             )
             .order_by("-created_at")
         )
-        return qs
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
